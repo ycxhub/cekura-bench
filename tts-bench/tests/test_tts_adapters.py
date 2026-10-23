@@ -691,6 +691,73 @@ class TestHume:
         assert HumeAdapter.unsupported_reason(TTSConfig(model="octave-2", voice="v", sample_rate=24000)) is not None
 
 
+class TestMurf:
+    async def test_voice_config_is_before_t0_and_end_closes_the_utterance(self):
+        from tts_bench.adapters.murf import MurfAdapter
+
+        murf, sent = adapter(MurfAdapter, "falcon-2", "Natalie")
+        synthesis = await murf.open_context("main")
+        assert synthesis.t0 is None
+        assert sent[0] == {"voice_config": {"voiceId": "Natalie", "locale": "en-US"}, "context_id": "main"}
+        await murf.send("main", "Hello ")
+        await murf.send("main", "there.")
+        await murf.finish("main")
+        assert sent[1:] == [
+            {"text": "Hello ", "context_id": "main", "end": False},
+            {"text": "there.", "context_id": "main", "end": False},
+            {"text": "", "context_id": "main", "end": True},
+        ]
+        assert synthesis.t0 is not None and synthesis.t_input_done is not None
+
+    async def test_audio_then_final_ends_the_turn_and_a_wav_header_is_stripped(self):
+        import base64
+
+        from tts_bench.adapters.murf import MurfAdapter
+
+        murf, _ = adapter(MurfAdapter, "falcon-2", "Natalie")
+        synthesis = await murf.open_context("main")
+        riff = b"RIFF" + b"\x00" * 32 + b"data" + b"\x00" * 4 + b"\x01\x00" * 8
+        murf._on_message({"audio": base64.b64encode(riff).decode(), "context_id": "main"})
+        assert bytes(synthesis.pcm) == b"\x01\x00" * 8
+        assert not synthesis.done.is_set()
+        murf._on_message({"final": True, "context_id": "main", "trace_id": "tr"})
+        assert synthesis.done.is_set() and synthesis.meta["trace_id"] == "tr"
+
+    async def test_final_may_carry_audio_on_the_same_envelope(self):
+        import base64
+
+        from tts_bench.adapters.murf import MurfAdapter
+
+        murf, _ = adapter(MurfAdapter, "falcon-2", "Natalie")
+        synthesis = await murf.open_context("main")
+        murf._on_message({"audio": base64.b64encode(b"\x01\x00").decode(), "context_id": None, "final": True})
+        assert bytes(synthesis.pcm) == b"\x01\x00" and synthesis.done.is_set()
+
+    async def test_interleaved_responses_go_to_their_own_context(self):
+        import base64
+
+        from tts_bench.adapters.murf import MurfAdapter
+
+        murf, _ = adapter(MurfAdapter, "falcon-2", "Natalie")
+        a = await murf.open_context("a")
+        b = await murf.open_context("b")
+        murf._on_message({"audio": base64.b64encode(b"\x01\x00").decode(), "context_id": "b"})
+        murf._on_message({"final": True, "context_id": "b"})
+        assert b.done.is_set() and b.pcm and not a.done.is_set() and not a.pcm
+
+    def test_cancel_is_a_declared_exclusion_and_the_handshake_carries_the_audio_contract(self):
+        from tts_bench.adapters.murf import MurfAdapter
+        from tts_bench.registry import PENDING
+
+        murf, _ = adapter(MurfAdapter, "falcon-2", "Natalie")
+        assert murf.url.startswith("wss://global.api.murf.ai/v1/speech/stream-input?")
+        assert "model=falcon-2" in murf.url and "format=PCM" in murf.url and "channel_type=MONO" in murf.url
+        assert "api-key=unused" in murf.url
+        assert MurfAdapter.unsupported_reason(TTSConfig("falcon-2", "Natalie"), ("cancel",)) == "murf has no cancel"
+        assert MurfAdapter.unsupported_reason(TTSConfig("falcon-2", "Natalie"), ("streamed_input", "continuation")) is None
+        assert PROVIDERS["murf"].voice_for("falcon-2") == "Natalie" and "murf" not in PENDING
+
+
 class TestLineupRates:
     def test_a_model_that_emits_one_rate_names_it_and_the_rest_keep_the_default(self):
         assert PROVIDERS["hume"].rate_for("octave-2") == 48000

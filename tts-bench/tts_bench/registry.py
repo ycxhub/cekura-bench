@@ -30,6 +30,7 @@ from tts_bench.adapters.gemini_tts import GeminiTTSAdapter
 from tts_bench.adapters.gradium import GradiumAdapter
 from tts_bench.adapters.hume import HumeAdapter
 from tts_bench.adapters.inworld import InworldAdapter
+from tts_bench.adapters.murf import MurfAdapter
 from tts_bench.adapters.openai_tts import OpenAITTSAdapter
 from tts_bench.adapters.rime import RimeAdapter
 from tts_bench.adapters.smallest import SmallestAdapter
@@ -182,11 +183,17 @@ PROVIDERS: dict[str, ProviderEntry] = {
         notes="HTTP SSML, raw PCM streamed back; the model is the voice name's suffix; whole text per request; "
               "region is the host (option region, default eastus)",
     ),
+    "murf": ProviderEntry(
+        "murf", MurfAdapter, "MURF_API_KEY",
+        (Model("falcon-2", "Natalie"),),
+        notes="websocket /v1/speech/stream-input; api-key on the handshake; voice_config before t0; "
+              "text frames share a context_id; end:true flushes; no cancel",
+    ),
 }
 
 # Protocols not yet spoken. Listed so the gap is a fact, not an oversight.
 PENDING = ("qwen-audio", "speechify", "minimax",
-           "murf", "hume", "lmnt", "google-cloud-tts", "polly")
+           "hume", "lmnt", "google-cloud-tts", "polly")
 
 
 def lineup() -> list[tuple[str, Model]]:

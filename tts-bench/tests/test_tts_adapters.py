@@ -695,10 +695,10 @@ class TestMurf:
     async def test_voice_config_is_before_t0_and_end_closes_the_utterance(self):
         from tts_bench.adapters.murf import MurfAdapter
 
-        murf, sent = adapter(MurfAdapter, "falcon-2", "Natalie")
+        murf, sent = adapter(MurfAdapter, "falcon-2", "Heidi")
         synthesis = await murf.open_context("main")
         assert synthesis.t0 is None
-        assert sent[0] == {"voice_config": {"voiceId": "Natalie", "locale": "en-US"}, "context_id": "main"}
+        assert sent[0] == {"voice_config": {"voiceId": "Heidi", "locale": "en-US"}, "context_id": "main"}
         await murf.send("main", "Hello ")
         await murf.send("main", "there.")
         await murf.finish("main")
@@ -714,7 +714,7 @@ class TestMurf:
 
         from tts_bench.adapters.murf import MurfAdapter
 
-        murf, _ = adapter(MurfAdapter, "falcon-2", "Natalie")
+        murf, _ = adapter(MurfAdapter, "falcon-2", "Heidi")
         synthesis = await murf.open_context("main")
         riff = b"RIFF" + b"\x00" * 32 + b"data" + b"\x00" * 4 + b"\x01\x00" * 8
         murf._on_message({"audio": base64.b64encode(riff).decode(), "context_id": "main"})
@@ -728,7 +728,7 @@ class TestMurf:
 
         from tts_bench.adapters.murf import MurfAdapter
 
-        murf, _ = adapter(MurfAdapter, "falcon-2", "Natalie")
+        murf, _ = adapter(MurfAdapter, "falcon-2", "Heidi")
         synthesis = await murf.open_context("main")
         murf._on_message({"audio": base64.b64encode(b"\x01\x00").decode(), "context_id": None, "final": True})
         assert bytes(synthesis.pcm) == b"\x01\x00" and synthesis.done.is_set()
@@ -738,7 +738,7 @@ class TestMurf:
 
         from tts_bench.adapters.murf import MurfAdapter
 
-        murf, _ = adapter(MurfAdapter, "falcon-2", "Natalie")
+        murf, _ = adapter(MurfAdapter, "falcon-2", "Heidi")
         a = await murf.open_context("a")
         b = await murf.open_context("b")
         murf._on_message({"audio": base64.b64encode(b"\x01\x00").decode(), "context_id": "b"})
@@ -749,13 +749,13 @@ class TestMurf:
         from tts_bench.adapters.murf import MurfAdapter
         from tts_bench.registry import PENDING
 
-        murf, _ = adapter(MurfAdapter, "falcon-2", "Natalie")
+        murf, _ = adapter(MurfAdapter, "falcon-2", "Heidi")
         assert murf.url.startswith("wss://global.api.murf.ai/v1/speech/stream-input?")
         assert "model=falcon-2" in murf.url and "format=PCM" in murf.url and "channel_type=MONO" in murf.url
         assert "api-key=unused" in murf.url
-        assert MurfAdapter.unsupported_reason(TTSConfig("falcon-2", "Natalie"), ("cancel",)) == "murf has no cancel"
-        assert MurfAdapter.unsupported_reason(TTSConfig("falcon-2", "Natalie"), ("streamed_input", "continuation")) is None
-        assert PROVIDERS["murf"].voice_for("falcon-2") == "Natalie" and "murf" not in PENDING
+        assert MurfAdapter.unsupported_reason(TTSConfig("falcon-2", "Heidi"), ("cancel",)) == "murf has no cancel"
+        assert MurfAdapter.unsupported_reason(TTSConfig("falcon-2", "Heidi"), ("streamed_input", "continuation")) is None
+        assert PROVIDERS["murf"].voice_for("falcon-2") == "Heidi" and "murf" not in PENDING
 
 
 class TestLineupRates:

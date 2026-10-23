@@ -185,7 +185,7 @@ PROVIDERS: dict[str, ProviderEntry] = {
     ),
     "murf": ProviderEntry(
         "murf", MurfAdapter, "MURF_API_KEY",
-        (Model("falcon-2", "Natalie"),),
+        (Model("falcon-2", "Heidi"),),
         notes="websocket /v1/speech/stream-input; api-key on the handshake; voice_config before t0; "
               "text frames share a context_id; end:true flushes; no cancel",
     ),
